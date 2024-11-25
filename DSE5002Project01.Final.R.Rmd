@@ -1,0 +1,455 @@
+# Katarina D-Blake
+# DSE5002Project01 - 11/24/24
+
+
+#A.) Restate the question in your own words
+#   1.) create several alternative ways to ask this question
+#   2.) think about what you could add to the question, or remove from it
+# What do current data scientist salaries look like and what is competitive enough to get top talent? 
+# How have data scientist salaries changed over the years? 
+# How do salaries vary by the many variables, (experience level, employment type, company size? 
+# Which countries have the most potential employees? 
+# Are there higher salaries for remote workers with various experience levels? 
+
+# B.)  You are being given the data set, you don’t need to find another one, or consider other sources in this project.  But you do need to do:
+#   1.) Load the data into a dataframe
+#   2.) Make sure all the variable types are set correctly.   Think about whether any of the    
+# variables should be factors (indicating membership in a group).  Use the factor or as.factor 
+# function to change these all to factors.
+
+```{r}
+#file.choose()
+salary_data<-read.csv("/Users/katarinadouglas-blake/Desktop/DSE5002/Project 01/DSE5002-Project1-KDB/r project data.csv")
+str(salary_data)
+salary_data$experience_level<-as.factor(salary_data$experience_level)
+salary_data$employment_type<-as.factor(salary_data$employment_type)
+salary_data$job_title<-as.factor(salary_data$job_title)
+salary_data$salary_currency<-as.factor(salary_data$salary_currency)
+salary_data$employee_residence<-as.factor(salary_data$employee_residence)
+salary_data$company_location<-as.factor(salary_data$company_location)
+salary_data$company_size<-as.factor(salary_data$company_size)
+```
+
+#   3.) Do a basis exploratory data analysis
+#     -use summary and comment on what you see for each variable
+```{r}
+str(salary_data)
+summary(salary_data)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(stringr)
+```
+
+#     -use one other table, or summary, that produces a text output for each variable
+#     -do at least one plot of some sort per variable
+# Timeline of  the data (work_year) is 3 years, from 2020 – 2022. 
+# Experience is most concentrated in Middle Level and Senior Level positions.  may have an impact on salaries across experience_level.
+# Majority of the positions in this data set are Full Time workers, which aligns with the CEOs needs.
+# Data Scientists and Data Engineer roles are most common, other roles have less representation in this data set. 
+# The range of salaries is $4,000 – $30,400,000. This max is likely an outlier. The average salary is $324,000. 
+# Most salaries are in USD currency, most relevant to the business question,  and should be focused on in analysis. The average USD salary is $112,298. 
+# Residence of the employees in this data are mainly in the U.S., followed by Great Britain and India. The data highly reflects the U.S. job market. 
+# Company location is concentrated in the U.S., similarly to employee_residence. 
+# Most companies in this dataset are mid sized, followed by large companies. 
+# The majority of positions in this dataset are 100% remote. 
+
+# Histogram for the distribution of salaries in USD currency. I used the geom_histogram plot and formatted the
+# salary values so that they were no longer in scientific format.
+```{r}
+ggplot(salary_data, aes(x = salary_in_usd)) + geom_histogram(binwidth = 20000, fill = "blue", color = "black") + 
+  labs(title = "Distribution of Data Scientist Salaries in USD", x = "Salary in USD", y = "Frequency") +
+  scale_x_continuous(labels = function(x) paste0("$", format(x, big.mark = ",", scientific = FALSE)))
+```
+# Boxplot showing the USD salary distribution. Highlights the outliers, and shows the median of
+# the data.
+```{r}
+ggplot(salary_data, aes(x = "", y = salary_in_usd)) + geom_boxplot(fill = "lightblue", color = "black") + 
+  labs(title = "Salary Distribution", x = "", y = "Salary in USD") +
+  scale_y_continuous(labels = function(x) paste0("$", format(x, big.mark = ",", scientific = FALSE)))
+```
+#Histogram displaying the salary_in_USD by experience level.
+```{r}
+ggplot(salary_data, aes(x = salary_in_usd)) + geom_histogram(binwidth = 20000, fill = "blue", color = "black") +
+  facet_wrap(~experience_level) + labs(title = "Salary Distribution by Experience Level", x = "Salary in USD", y = "Frequency") + 
+  scale_x_continuous(labels = function(x) paste0("$", format(x, big.mark = ",", scientific = FALSE)))
+```
+# Middle and senior level employees make up the majority of the dataset and earn salaries in the 5-6 figure range. Executive level employees make the most but their salaries are on the decline. Entry level employee salaries are on the rise but does not align with business needs. The CEO should prioritize middle and senior level candidates because they offer experience and a reasonable pay range. The the average salary for mid level employees is $87,996 and theaverage salary for Senior level employees is $138,617. This should be the range for the CEO to make competitive offers. 
+
+#calculation finding the mean and median salary_in_USD. 
+```{r}
+mean_salaryinUSD <- mean(salary_data$salary_in_usd, na.rm = TRUE)
+print(paste("The average salary in USD is",mean_salaryinUSD, "dollars"))
+median_salaryinUSD <- median(salary_data$salary_in_usd, na.rm = TRUE)
+print(paste("The median salary in USD is",median_salaryinUSD, "dollars"))
+```
+
+#calculation finding the mean salary_in_USD by experience. 
+```{r}
+library(scales)
+mean_salary_byexperience <- salary_data %>%
+  group_by(experience_level) %>%
+  summarize(mean_experience_salary = mean(salary_in_usd, na.rm = TRUE))
+mean_salary_byexperience$mean_experience_salary <- dollar(mean_salary_byexperience$mean_experience_salary)
+print(mean_salary_byexperience)
+
+```
+
+# Histogram displaying the mean salary_in_USD by experience. 
+```{r}
+ggplot(mean_salary_byexperience, aes(x = experience_level, y = mean_salaryinUSD)) + 
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(
+    title = "Average Salary in USD by Experience Level",
+    x = "Experience Level",
+    y = "Average Salary (USD)"
+  ) +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  theme_minimal()
+
+```
+# Calculation of the average salary in USD for each work year
+```{r}
+avgsalary_by_workyear_compsize <- salary_data %>%
+  group_by(work_year, company_size) %>%
+  summarize(mean_salary_usd = mean(salary_in_usd, na.rm = TRUE))%>%
+  arrange(work_year, desc(mean_salary_usd))
+avgsalary_by_workyear_compsize$mean_salary_usd <- scales::dollar(avgsalary_by_workyear_compsize$mean_salary_usd)
+print(avgsalary_by_workyear_compsize)
+```
+
+# Line graph of salary_in_USD over the work_year by company_size. 
+```{r}
+ggplot(salary_data, aes(x = work_year, y = salary_in_usd, color = company_size)) + 
+  geom_line(stat = "summary", fun = "mean", size = 1) + 
+  geom_point(stat = "summary", fun = "mean", size = 2) + 
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Salary Trends Over Work Years by Company Size", x = "Work Years",
+       y = "Average Salary USD", color = "Comapny Size")
+# salaries for large companies have seen a growth over the 3 work years. medium sized companies
+# saw a dip in salaries in 2021 and a rise the following year. small sized companies have significantly lower
+# salaries, less than $80,000.
+```
+# Line plot showing the change in salaries over the work years by experiece level.
+```{r}
+ggplot(salary_data, aes(x = work_year, y = salary_in_usd, color = experience_level)) + 
+  geom_line(stat = "summary", fun = "mean", size = 1) + 
+  geom_point(stat = "summary", fun = "mean", size = 2) + 
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Salary Trends Over Work Years by Experience Level", x = "Work Years",
+       y = "Average Salary USD", color = "Experience Level")
+# salaries in USD over the 3 years for expert level employees have declined since 2020 while salaries for senior and entry level employees have remained stagnant. Senior level salaries are on the rise. 
+```
+
+# Calculation finding the average salary_in_USD by employment_type. 
+```{r}
+emp_type_salary <- salary_data %>%
+  group_by(employment_type) %>%
+  summarize(avg_emptype_salary = mean(salary_in_usd, na.rm = TRUE))
+print(emp_type_salary)
+```
+
+
+# Bar plot showing the average salary_in_USD by employment_type. 
+```{r}
+ggplot(emp_type_salary, aes(x = employment_type, y = avg_emptype_salary, fill = employment_type)) + 
+  geom_col() + 
+  scale_y_continuous(labels = scales::label_dollar()) + 
+  labs(title = "Average Salaries in USD by Employment Type", x = "Employment Type", 
+       y = "Average Employment Type Salary")
+```
+# Calculation finding the average salary_in_USD by employee residences focusing on the countries with at least 10 records.
+# Several other countries were listed but did not have significant enough data for the CEO. 
+```{r}
+empresidence_salaries <- salary_data %>%
+  group_by(employee_residence) %>%
+  summarise(mean_empresidence_salaries = mean(salary_in_usd, na.rm = TRUE), 
+            count = n()) %>%
+  arrange(desc(mean_empresidence_salaries)) %>%
+  filter(count >= 10) %>%
+mutate(mean_empresidence_salaries = as.numeric(mean_empresidence_salaries))
+print(empresidence_salaries)
+```
+
+
+# A corresponding plot showing the average salary_in_USD by employee residences focusing on the countries with at least 10 records. 
+```{r}
+ggplot(empresidence_salaries, aes(x = reorder(employee_residence, mean_empresidence_salaries),
+        y = mean_empresidence_salaries)) + 
+         geom_col(fill = "lightblue") + 
+         labs(title = "Average Salaries by Employee Residence", x = "Employee Residence", 
+              y = "Average Salary in USD ")
+#US employees are making more on average at about $150,000 
+```
+#Calculation finding the count of records by employee_residence, focusing on the countries with at least 10 records
+```{r}
+residence_count<-salary_data %>%
+  group_by(employee_residence) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 10)
+print(residence_count)
+# most of the employees in this dataset are US based, ideal for the CEO looking to find new talent. 
+```
+
+
+# Corresponding plot showing the distribution of employees residences focusing on the countries with at least 10 records. 
+```{r}
+ggplot(residence_count, aes(x = reorder(employee_residence, count), 
+  y = count)) + geom_col(fill = "orange") +
+  scale_y_continuous(breaks=seq(0,400,by=20)) +
+  labs(title = "Distribution of Employee Residence (at least 10 records)", x = "Employee Residence", 
+       y = "Count")
+```
+# Calculation finding the count of the various company_locations with at least 10 records.
+```{r}
+count_comp_loc<-salary_data%>%
+  group_by(company_location)%>%
+  summarise(count = n())%>%
+  arrange(desc(count))%>%
+  filter(count >= 10)
+print(count_comp_loc)
+# similarly to the employee_residence, most of company locations of the employees in this data set
+# are employed by US companies. 
+```
+
+# Corresponding plot of the count of company_locations with at least 10 records. 
+```{r}
+ggplot(count_comp_loc, aes(x = reorder(company_location, count), y = count)) +
+  geom_col(fill = "steelblue") +
+  labs(title = "Count by Company Location",
+       x = "Company Location", y = "Count")
+```
+
+# Calculation finding the average salary_in_usd by company_location.
+```{r}
+salary_by_comp_location <- salary_data %>%
+  group_by(company_location) %>%
+  summarize(avg_salary_by_comploc = mean(salary_in_usd, na.rm = TRUE)) %>%
+  arrange(desc(avg_salary_by_comploc)) %>%
+  slice_head(n = 10)
+print(salary_by_comp_location)
+
+# Russian companies have the highest average salary in USD, followed by the U.S.. 
+```
+
+# Bar plot of the average salary_in_usd by company_location. 
+```{r}
+ggplot(salary_by_comp_location, aes(x = reorder(company_location, avg_salary_by_comploc), 
+                                    y = avg_salary_by_comploc)) + 
+  geom_col(fill = "lightgreen") + 
+  scale_y_continuous(labels = scales::label_dollar()) +  # Apply dollar formatting here
+  labs(title = "Average Salaries (in USD) by Company Location", 
+       x = "Company Location", y = "Average Salary")
+```
+
+# Count of the types of salary_currency.
+```{r}
+currency_count<-salary_data %>%
+  group_by(salary_currency) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 10)
+print(currency_count)
+# There are 5 types of currencies in this dataset with at least 10 records.
+# USD is the most relevant to the business questions. 
+```
+# Calculation finding the count of job_title with at least 10 records.
+```{r}
+job_title_dist<-salary_data%>%
+  group_by(job_title)%>%
+  summarise(count = n())%>%
+  arrange(desc(count))%>%
+  filter(count>=10)
+print(job_title_dist)
+```
+
+
+# Corresponding graph showing the count of various job_titles. 
+```{r}
+ggplot(job_title_dist, aes(x = reorder(job_title, count), y = count)) + geom_col(fill = "purple") +
+  scale_y_continuous(breaks = seq(0,250, by=10))+
+  labs(title = "Count of Various Job Titles" , x = "Job Title", y = "Count") + 
+  theme(axis.text.x = element_text(angle = 90))
+# Most of the jobs in this data set are Data Scientist and Data Engineer roles. 
+```
+# Calculation of the average salary_in_usd by job_title,
+# focusing on the job titles with 10 or more records.
+```{r}
+salaryby_job_title <- salary_data %>%
+  group_by(job_title) %>%
+  summarize(
+    avg_salaryby_jobtitle = mean(salary_in_usd, na.rm = TRUE),
+    count = n()) %>%
+  filter(count >= 10) %>% 
+  mutate(avg_salaryby_jobtitle= as.numeric(avg_salaryby_jobtitle)) %>%
+  arrange(desc(avg_salaryby_jobtitle)) 
+print(salaryby_job_title)
+```
+
+
+# Corresponding graph illustrating the average salary_in_usd by job_title,
+# focusing on the job titles with 10 or more records. 
+```{r}
+# Create the plot
+ggplot(salaryby_job_title, aes(x = reorder(job_title, avg_salaryby_jobtitle), y = avg_salaryby_jobtitle)) +
+  geom_col(fill = "aquamarine2") +
+  scale_y_continuous(labels = scales::label_dollar(), breaks = seq(0, 425000, by = 30000)) +
+  labs(title = "Average Salary (USD) by Job Title", x = "Job Title", y = "Average Salary") +
+  theme(axis.text.x = element_text(angle = 270)) +
+  coord_flip()
+
+
+```
+
+
+# Distribution of the remote_ratio in the salary_data.
+```{r}
+count_remote_ratio<-salary_data%>%
+  group_by(remote_ratio)%>%
+  summarise(count = n())
+print(count_remote_ratio)
+```
+
+
+# Plot of the distribution of remote_ratio across the salary_data. 
+```{r}
+ggplot(count_remote_ratio, aes(x = factor(remote_ratio), y = count)) +
+  geom_col(fill = "brown1") +
+  scale_x_discrete(labels = function(x) paste0(x, "%")) + # Add % to remote ratio labels
+  labs(title = "Count of Jobs by Remote Ratio", 
+       x = "Remote Ratio", 
+       y = "Count")
+# Most of the jobs in this data set are 100% remote, an important factor to note for the CEO. 
+```
+
+
+
+# Calculation of the average salary_in_usd for remote work. 
+```{r}
+salaryby_remote<- salary_data %>%
+  group_by(remote_ratio) %>%
+  summarize(avg_remote_salary = mean(salary_in_usd, na.rm = TRUE)) %>%
+  arrange(remote_ratio)
+print(salaryby_remote)
+```
+
+
+ 
+# Plot of the average salary_in_usd against the remote_ratio. 
+```{r}
+
+ggplot(salaryby_remote, aes(x = factor(remote_ratio), y = avg_remote_salary)) +
+  geom_col(fill = "coral") +
+  scale_x_discrete(labels = function(x) paste0(x, "%")) +
+  labs(title = "Average Salary by Remote Ratio", x = "Remote Ratio",
+       y = "Average Salary (USD)") 
+```
+# Calculation finding relationship between the remote_ratio and experience_level. 
+```{r}
+remoteratio_by_explvl <- salary_data %>%
+  group_by(remote_ratio, experience_level) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  arrange(desc(count))
+print(remoteratio_by_explvl)
+```
+# Calculation finding the average salary of remote ratio by experience level. 
+```{r}
+avgsalary_by_remote_explvl <- salary_data %>%
+  group_by(remote_ratio, experience_level) %>%
+  summarise(avg_remote_explvl_salary = mean(salary_in_usd, na.rm = TRUE)) %>%
+  arrange(remote_ratio, desc(avg_remote_explvl_salary))
+print(avgsalary_by_remote_explvl)
+
+```
+
+
+# Corresponding plot showing the remote_ratio and experience_level relationship. 
+```{r}
+ggplot(remoteratio_by_explvl, aes(x = factor(remote_ratio), y = count, fill = experience_level)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Remote Ratio by Experience Level", x = "Remote Ratio (%)",
+    y = "Count", fill = "Experience Level") +
+  scale_x_discrete(labels = function(x) paste0(x, "%")) 
+```
+
+# Calculation finding the relationship between remote_ratio and company_size. 
+```{r}
+remoteratio_by_companysize <- salary_data %>%
+group_by(remote_ratio, company_size) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  arrange(desc(count))
+print(remoteratio_by_companysize)
+```
+# Corresponding plot showing the remote_ratio relationship with company_size. 
+```{r}
+ggplot(remoteratio_by_companysize, aes(x = factor(remote_ratio), y = count,
+    fill = company_size)) + geom_bar(stat = "identity", position = "dodge") + 
+  labs(title = "Remote Ratio by Company Size", x = "Remote Ratio (%)", 
+       y = "Count", fill = "Company Size") +
+  scale_x_discrete(labels = function(x) paste0(x, "%"))
+```
+# Calculation finding the average salary of remote ratio by company size. 
+```{r}
+avgsalary_by_remote_compsize <- salary_data %>%
+  group_by(remote_ratio, company_size) %>%
+  summarise(avg_remote_compsize_salary = mean(salary_in_usd, na.rm = TRUE, .groups = "drop")) %>%
+  arrange(remote_ratio, desc(avg_remote_compsize_salary))
+print(avgsalary_by_remote_compsize)
+```
+
+# Calculation finding the average salary_in_usd, grouped by
+# company_size, experience_level, remote_ratio, and employment_type. 
+```{r}
+grouped_remote_salary <- salary_data %>%
+  group_by(remote_ratio, company_size, experience_level, employment_type) %>%
+  summarise(avg_salary = mean(salary_in_usd, na.rm = TRUE), count = n(), 
+  .groups = "drop") %>%
+  arrange(desc(avg_salary))
+print(grouped_remote_salary)
+```
+
+
+# Plot of the average salary_in_usd grouped by company_size and remote_ratio. 
+```{r}
+ggplot(grouped_remote_salary, aes(x = company_size, 
+  y = avg_salary, fill = company_size)) +
+  geom_col(position = "dodge") + facet_wrap(~remote_ratio) +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Average Remote Ratio Salary (USD) by Company Size", x = "Company Size", 
+       y = "Average Salary (USD)", fill = "Company Size")
+```
+# small companies that offer 100% remote work have the highest salaries among company sizes. If the CEO is looking to hire a fully remote candidate, it may attract senior level talent especially as a small company. 
+
+# Plot of the average salary_in_usd grouped by experience_level and remote_ratio.
+```{r}
+ggplot(grouped_remote_salary, aes(x = experience_level, 
+  y = avg_salary, fill = experience_level)) +
+  geom_col(position = "dodge") + facet_wrap(~remote_ratio) +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Average Remote Ratio Salary (USD) by Experience Level", x = "Experience Level", 
+       y = "Average Salary (USD)", fill = "Experience Level")
+```
+# Calculation finding the average salary in USD of remote ratio by employment type. 
+```{r}
+avgsalary_by_remote_emptype <- salary_data %>%
+  group_by(remote_ratio, employment_type) %>%
+  summarise(avg_remote_emptype_salary = mean(salary_in_usd, na.rm = TRUE)) %>%
+  arrange(remote_ratio, desc(avg_remote_emptype_salary))
+print(avgsalary_by_remote_emptype)
+```
+
+# Plot of the average salary_in_usd grouped by employment_type and remote_ratio.
+```{r}
+ggplot(grouped_remote_salary, aes(x = employment_type, 
+  y = avg_salary, fill = employment_type))+
+  geom_col(position = "dodge") + facet_wrap(~remote_ratio) +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Average Remote Ratio Salary (USD) by Employment Type", x = "Employment Type", 
+       y = "Average Salary (USD)", fill = "Employment Type")
+```
+# Contract employees have the highest average salaries followed by fulltime employees. The company should focus on full time employees to ensure the best candidate for the company while being mindful of costs of contract employees. # the company should focus on US based candidates as those are the candidates most saturated in the current job market.
+
+#Story Summary:
+# The company should offer competitive salaries between $90,000 and $140,000, seeking mid and senior level data scientists. They should offer a flexible full time remote or hybrid schedule, as those are roles that attract higher level employees. These offers should be targeted towards US resident candidates to get the best talent. 
+
